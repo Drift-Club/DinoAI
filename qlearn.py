@@ -38,7 +38,7 @@ def définir_paramètres():
     params = dict()
     params['epsilon_decay_linear'] = 1 / 75  # La fonction agent.epsilon détermine le caractère aléatoire des actions
     params['learning_rate'] = 0.0005
-    params['first_layer_size'] = 150  # neurons dans la prmeière couche
+    params['first_layer_size'] = 150  # neurons dans la première couche
     params['second_layer_size'] = 150  # dans la deuxième
     params['third_layer_size'] = 150  # dans la troisième
     params['episodes'] = 150
@@ -94,12 +94,12 @@ def nouvelle_partie(display_option, speed, params):
         # Initialisation de la partie en cours
         game = Game(440, 440)
         player1 = game.player
-        food1 = game.food
+        ennemis1 = game.ennemis
 
         # On effectue la première action de l'IA
-        initialiser_partie(player1, game, food1, agent, params['batch_size'])
+        initialiser_partie(player1, game, ennemis1, agent, params['batch_size'])
         if display_option:
-            display(player1, food1, game, record)
+            display(player1, ennemis1, game, record)
 
         # Tant que l'agent n'a pas perdu
         while not game.crash:
@@ -110,7 +110,7 @@ def nouvelle_partie(display_option, speed, params):
                 agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
 
             # Récupère l'état précédent
-            state_old = agent.get_state(game, player1, food1)
+            state_old = agent.get_state(game, player1, ennemis1)
 
             # Soit on performe une action au hasard si on sait rien faire,
             # sinon on prend une action en fonction des connaissances de l'IA
@@ -122,8 +122,8 @@ def nouvelle_partie(display_option, speed, params):
                 final_move = to_categorical(np.argmax(prediction[0]), num_classes=3)
 
             # On effectue la nouvelle action
-            player1.do_move(final_move, player1.x, player1.y, game, food1, agent)
-            state_new = agent.get_state(game, player1, food1)
+            player1.do_move(final_move, player1.x, player1.y, game, ennemis1, agent)
+            state_new = agent.get_state(game, player1, ennemis1)
 
             # On calcule le reward, si le joueur a perdu ou continue de survivre
             reward = agent.set_reward(player1, game.crash)
@@ -137,9 +137,10 @@ def nouvelle_partie(display_option, speed, params):
             # On enregistre le high score
             record = high_score
             if display_option:
-                display(player1, food1, game, record)
+                display(player1, ennemis1, game, record)
                 pygame.time.wait(speed)
 
+        # La partie est terminée, on en tire toutes les conclusions ...
         if params['train']:
             agent.replay_new(agent.memory, params['batch_size'])
 
@@ -155,8 +156,6 @@ def nouvelle_partie(display_option, speed, params):
 #################################
 # Contenu du jeu qui n'a pas changé modifié pour être joué par notre agent
 #################################
-
-
 def load_image(
         name,
         sizex=-1,

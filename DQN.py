@@ -41,58 +41,60 @@ class DQNAgent(object):
         return model
 
     # TODO adaptation des states pour chrome/dino
-    def get_state(self, game, player, food):
+    def get_state(self, game, player, ennemis):
         state = [
             # Nouveaux états pour chromedino :
-            # Danger bas (cactus et certains pteras)
-            # Danger haut (ptera volants)
-            # Avancer droit (ne pas sauter)
-            # Saut
-            # Saccroupir
-            (player.x_change == 20 and player.y_change == 0 and (
-                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                    player.position[-1][0] + 20 >= (game.game_width - 20))) or (
-                    player.x_change == -20 and player.y_change == 0 and (
-                    (list(map(add, player.position[-1], [-20, 0])) in player.position) or
-                    player.position[-1][0] - 20 < 20)) or (player.x_change == 0 and player.y_change == -20 and (
-                    (list(map(add, player.position[-1], [0, -20])) in player.position) or
-                    player.position[-1][-1] - 20 < 20)) or (player.x_change == 0 and player.y_change == 20 and (
-                    (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                    player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger straight
-
-            (player.x_change == 0 and player.y_change == -20 and (
-                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                    player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                    player.x_change == 0 and player.y_change == 20 and ((list(map(add, player.position[-1],
-                                                                                  [-20, 0])) in player.position) or
-                                                                        player.position[-1][0] - 20 < 20)) or (
-                    player.x_change == -20 and player.y_change == 0 and ((list(map(
-                add, player.position[-1], [0, -20])) in player.position) or player.position[-1][-1] - 20 < 20)) or (
-                    player.x_change == 20 and player.y_change == 0 and (
-                    (list(map(add, player.position[-1], [0, 20])) in player.position) or player.position[-1][
-                -1] + 20 >= (game.game_height - 20))),  # danger right
-
-            (player.x_change == 0 and player.y_change == 20 and (
-                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                    player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                    player.x_change == 0 and player.y_change == -20 and ((list(map(
-                add, player.position[-1], [-20, 0])) in player.position) or player.position[-1][0] - 20 < 20)) or (
-                    player.x_change == 20 and player.y_change == 0 and (
-                    (list(map(add, player.position[-1], [0, -20])) in player.position) or player.position[-1][
-                -1] - 20 < 20)) or (
-                    player.x_change == -20 and player.y_change == 0 and (
-                    (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                    player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger left
-
-            player.x_change == -20,  # move left
-            player.x_change == 20,  # move right
-            player.y_change == -20,  # move up
-            player.y_change == 20,  # move down
-            food.x_food < player.x,  # food left
-            food.x_food > player.x,  # food right
-            food.y_food < player.y,  # food up
-            food.y_food > player.y  # food down
+            # Danger bas (cactus et certains pteras) ennemis.prochain() == cactus && cactus.x < (visible à lecran) ou prochain() == ptera et visible et ptera.y < 40?
+            # Danger haut (ptera volants) : ennemis.prochain() == ptera et visible et y > 40?
+            # Avancer droit (ne pas sauter) : !dino.isJumping et !dino.isDucking
+            # Saut : dino.isJumping
+            # Saccroupir : dino.isDucking
         ]
+        """   
+                (player.x_change == 20 and player.y_change == 0 and (
+                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                        player.position[-1][0] + 20 >= (game.game_width - 20))) or (
+                        player.x_change == -20 and player.y_change == 0 and (
+                        (list(map(add, player.position[-1], [-20, 0])) in player.position) or
+                        player.position[-1][0] - 20 < 20)) or (player.x_change == 0 and player.y_change == -20 and (
+                        (list(map(add, player.position[-1], [0, -20])) in player.position) or
+                        player.position[-1][-1] - 20 < 20)) or (player.x_change == 0 and player.y_change == 20 and (
+                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
+                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger straight
+
+                (player.x_change == 0 and player.y_change == -20 and (
+                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
+                        player.x_change == 0 and player.y_change == 20 and ((list(map(add, player.position[-1],
+                                                                                      [-20, 0])) in player.position) or
+                                                                            player.position[-1][0] - 20 < 20)) or (
+                        player.x_change == -20 and player.y_change == 0 and ((list(map(
+                    add, player.position[-1], [0, -20])) in player.position) or player.position[-1][-1] - 20 < 20)) or (
+                        player.x_change == 20 and player.y_change == 0 and (
+                        (list(map(add, player.position[-1], [0, 20])) in player.position) or player.position[-1][
+                    -1] + 20 >= (game.game_height - 20))),  # danger right
+
+                (player.x_change == 0 and player.y_change == 20 and (
+                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
+                        player.x_change == 0 and player.y_change == -20 and ((list(map(
+                    add, player.position[-1], [-20, 0])) in player.position) or player.position[-1][0] - 20 < 20)) or (
+                        player.x_change == 20 and player.y_change == 0 and (
+                        (list(map(add, player.position[-1], [0, -20])) in player.position) or player.position[-1][
+                    -1] - 20 < 20)) or (
+                        player.x_change == -20 and player.y_change == 0 and (
+                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
+                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger left
+
+                player.x_change == -20,  # move left
+                player.x_change == 20,  # move right
+                player.y_change == -20,  # move up
+                player.y_change == 20,  # move down
+                ennemis.x_food < player.x,  # food left
+                ennemis.x_food > player.x,  # food right
+                ennemis.y_food < player.y,  # food up
+                ennemis.y_food > player.y  # food down
+        """
 
         for i in range(len(state)):
             if state[i]:
@@ -102,9 +104,9 @@ class DQNAgent(object):
 
         return np.asarray(state)
 
-    def set_reward(self, player, crash):
-        self.reward = 0
-        if crash:
+    def set_reward(self, dino, crash):
+        self.reward = 0.1
+        if dino.isDead:
             self.reward = -10
             return self.reward
         return self.reward
