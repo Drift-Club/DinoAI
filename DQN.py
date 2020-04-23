@@ -40,43 +40,49 @@ class DQNAgent(object):
             model.load_weights(self.weights)
         return model
 
-    #TODO adaptation des states pour chrome/dino
+    # TODO adaptation des states pour chrome/dino
     def get_state(self, game, player, food):
         state = [
+            # Nouveaux états pour chromedino :
+            # Danger bas (cactus et certains pteras)
+            # Danger haut (ptera volants)
+            # Avancer droit (ne pas sauter)
+            # Saut
+            # Saccroupir
             (player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 >= (game.game_width - 20))) or (
-                        player.x_change == -20 and player.y_change == 0 and (
-                            (list(map(add, player.position[-1], [-20, 0])) in player.position) or
-                            player.position[-1][0] - 20 < 20)) or (player.x_change == 0 and player.y_change == -20 and (
-                        (list(map(add, player.position[-1], [0, -20])) in player.position) or
-                        player.position[-1][-1] - 20 < 20)) or (player.x_change == 0 and player.y_change == 20 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger straight
+                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                    player.position[-1][0] + 20 >= (game.game_width - 20))) or (
+                    player.x_change == -20 and player.y_change == 0 and (
+                    (list(map(add, player.position[-1], [-20, 0])) in player.position) or
+                    player.position[-1][0] - 20 < 20)) or (player.x_change == 0 and player.y_change == -20 and (
+                    (list(map(add, player.position[-1], [0, -20])) in player.position) or
+                    player.position[-1][-1] - 20 < 20)) or (player.x_change == 0 and player.y_change == 20 and (
+                    (list(map(add, player.position[-1], [0, 20])) in player.position) or
+                    player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger straight
 
             (player.x_change == 0 and player.y_change == -20 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                        player.x_change == 0 and player.y_change == 20 and ((list(map(add, player.position[-1],
-                                                                                      [-20, 0])) in player.position) or
-                                                                            player.position[-1][0] - 20 < 20)) or (
-                        player.x_change == -20 and player.y_change == 0 and ((list(map(
-                    add, player.position[-1], [0, -20])) in player.position) or player.position[-1][-1] - 20 < 20)) or (
-                        player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or player.position[-1][
-                    -1] + 20 >= (game.game_height - 20))),  # danger right
+                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                    player.position[-1][0] + 20 > (game.game_width - 20))) or (
+                    player.x_change == 0 and player.y_change == 20 and ((list(map(add, player.position[-1],
+                                                                                  [-20, 0])) in player.position) or
+                                                                        player.position[-1][0] - 20 < 20)) or (
+                    player.x_change == -20 and player.y_change == 0 and ((list(map(
+                add, player.position[-1], [0, -20])) in player.position) or player.position[-1][-1] - 20 < 20)) or (
+                    player.x_change == 20 and player.y_change == 0 and (
+                    (list(map(add, player.position[-1], [0, 20])) in player.position) or player.position[-1][
+                -1] + 20 >= (game.game_height - 20))),  # danger right
 
             (player.x_change == 0 and player.y_change == 20 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                        player.x_change == 0 and player.y_change == -20 and ((list(map(
-                    add, player.position[-1], [-20, 0])) in player.position) or player.position[-1][0] - 20 < 20)) or (
-                        player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, -20])) in player.position) or player.position[-1][
-                    -1] - 20 < 20)) or (
+                    (list(map(add, player.position[-1], [20, 0])) in player.position) or
+                    player.position[-1][0] + 20 > (game.game_width - 20))) or (
+                    player.x_change == 0 and player.y_change == -20 and ((list(map(
+                add, player.position[-1], [-20, 0])) in player.position) or player.position[-1][0] - 20 < 20)) or (
+                    player.x_change == 20 and player.y_change == 0 and (
+                    (list(map(add, player.position[-1], [0, -20])) in player.position) or player.position[-1][
+                -1] - 20 < 20)) or (
                     player.x_change == -20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger left
+                    (list(map(add, player.position[-1], [0, 20])) in player.position) or
+                    player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger left
 
             player.x_change == -20,  # move left
             player.x_change == 20,  # move right
