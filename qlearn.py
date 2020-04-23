@@ -24,18 +24,21 @@ def définir_paramètres():
     return params
 
 
+# TODO modifier pour relier l'IA au chrome/dino
 # Initialise une partie avec les bons paramètres
 def initialiser_partie(player, game, food, agent, batch_size):
     state_init1 = agent.get_state(game, player, food)  # [0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0]
     action = [1, 0, 0]
     player.do_move(action, player.x, player.y, game, food, agent)
     state_init2 = agent.get_state(game, player, food)
+
     # On définit un reward (récompense) calculée en fonction de l'action prise
     reward1 = agent.set_reward(player, game.crash)
     agent.remember(state_init1, action, reward1, state_init2, game.crash)
     agent.replay_new(agent.memory, batch_size)
 
 
+# TODO modifier pour adapter l'IA au jeu
 # Gère la partie en cours
 def nouvelle_partie(display_option, speed, params):
     pygame.init()
@@ -624,10 +627,7 @@ def play():
     pygame.quit()
     quit()
 
-
-#def main():
- #   isGameQuit = intro_screen()
- #   if not isGameQuit:
-  #      play()
-
-
+# def main():
+#   isGameQuit = intro_screen()
+#   if not isGameQuit:
+#      play()
