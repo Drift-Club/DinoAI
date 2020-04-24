@@ -2,6 +2,7 @@ import os
 import pygame
 import random
 import numpy as np
+import sys
 from DQN import DQNAgent
 from random import randint
 from keras.utils import to_categorical  # bibliothèque Keras permettant un dvp IA de haut niveau
@@ -43,9 +44,9 @@ def définir_paramètres():
     params['first_layer_size'] = 150  # neurons dans la première couche
     params['second_layer_size'] = 150  # dans la deuxième
     params['third_layer_size'] = 150  # dans la troisième
-    params['episodes'] = 1500  # Nombre de parties à jouer pour entraîner l'IA
+    params['episodes'] = 150  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
-    params['batch_size'] = 500
+    params['batch_size'] = 1024  # 500 de base (ceci est un test)
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
     params[
         'load_weights'] = False  # Charger les poids pré-calculés (regarder l'IA jouer avec ses connaissances ultérieures)
@@ -80,7 +81,7 @@ def load_image(
     image = pygame.image.load(fullname)
     image = image.convert()
     if color_key is not None:
-        if color_key is -1:
+        if color_key == -1:
             color_key = image.get_at((0, 0))
         image.set_colorkey(color_key, RLEACCEL)
 
@@ -117,7 +118,7 @@ def load_sprite_sheet(
             image.blit(sheet, (0, 0), rect)
 
             if colorkey is not None:
-                if colorkey is -1:
+                if colorkey == -1:
                     colorkey = image.get_at((0, 0))
                 image.set_colorkey(colorkey, RLEACCEL)
 
@@ -137,8 +138,8 @@ def disp_gameOver_msg(retbutton_image, gameover_image):
     retbutton_rect.top = height * 0.52
 
     gameover_rect = gameover_image.get_rect()
-    gameover_rect.centerx = width / 2
-    gameover_rect.centery = height * 0.35
+    gameover_rect.centerx = int(width / 2)
+    gameover_rect.centery = int(height * 0.35)
 
     screen.blit(retbutton_image, retbutton_rect)
     screen.blit(gameover_image, gameover_rect)
@@ -324,7 +325,7 @@ class Scoreboard():
         if x == -1:
             self.rect.left = width * 0.89
         else:
-            self.rect.left = x
+            self.rect.left = int(x)
         if y == -1:
             self.rect.top = height * 0.1
         else:
@@ -389,6 +390,11 @@ def lancer_IA():
     # On crée l'agent de notre IA
     params = définir_paramètres()
     agent = DQNAgent(params)
+
+    # Prend un argument pour savoir si on affiche ou pas l'écran (gagne de la vitesse)
+    display_game = sys.argv.pop()
+    if display_game is None:
+        display_game = True
 
     # S'il existe des poids (ie on a déjà fait tourner l'IA, alors on les charge)
     weights_filepath = params['weights_path']
@@ -512,7 +518,6 @@ def lancer_IA():
                     # TODO DONE Calcul du reward et du nouveau state
                     state_new = agent.get_state(playerDino, cacti, pteras)
                     reward = agent.set_reward(playerDino, cacti, pteras)
-                    print(reward)
 
                     # TODO DONE Enregistrement dans la mémoire
                     if params['train']:
@@ -570,6 +575,7 @@ def lancer_IA():
                         gameOver = True
                         if playerDino.score > high_score:
                             high_score = playerDino.score
+                            record = playerDino
 
                     if counter % 700 == 699:
                         new_ground.speed -= 1
@@ -602,7 +608,6 @@ def lancer_IA():
                         nb_jeux_joues += 1
                         print("**************************************************************")
                         print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
-                        print("**************************************************************")
                         score_plot.append(high_score)
                         counter_plot.append(nb_jeux_joues)
 
@@ -611,6 +616,13 @@ def lancer_IA():
 
     if params['train']:
         agent.model.save_weights(params['weights_path'])
+    print("***************************************************")
+    print("Fin de l'entraînement de cette IA.")
+    print("Liste des scores : ")
+    print(*score_plot)
+    print("Record : " + str(record))
+    print("Entraînée sur " + str(params["episodes"]) + " épisodes")
+    print("***************************************************")
 
 
 lancer_IA()
