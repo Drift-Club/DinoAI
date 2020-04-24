@@ -43,7 +43,7 @@ def définir_paramètres():
     params['first_layer_size'] = 150  # neurons dans la première couche
     params['second_layer_size'] = 150  # dans la deuxième
     params['third_layer_size'] = 150  # dans la troisième
-    params['episodes'] = 150
+    params['episodes'] = 1500  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
     params['batch_size'] = 500
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
@@ -409,7 +409,6 @@ def lancer_IA():
                 quit()
 
         # Initialisation de la partie en cours
-        print("Partie chargée")
         global high_score
         gamespeed = 4
         startMenu = False
@@ -474,24 +473,24 @@ def lancer_IA():
                         move = to_categorical(randint(0, 2), num_classes=3)
                     else:
                         # On décide de l'action en fonction de l'état précédent
-                        prediction = agent.model.predict(state_old.reshape((1, 5)))
+                        prediction = agent.model.predict(state_old.reshape((1, 6)))
                         move = to_categorical(np.argmax(prediction[0]), num_classes=3)
                         # Le final move / action est un array [rester_droit sauter saccroupir]
 
                     # TODO DONE on effectue l'action
                     if np.array_equal(move, [1, 0, 0]):
-                        print("TOUT DROIT")
+                        # print("TOUT DROIT")
                         playerDino.isDucking = False
                         # On avance tt droit, si le dino est accroupi il se relève
                     elif np.array_equal(move, [0, 1, 0]):
-                        print("SAUTE")
+                        # print("SAUTE")
                         if playerDino.rect.bottom == int(0.98 * height):
                             playerDino.isJumping = True
                             if pygame.mixer.get_init() is not None:
                                 jump_sound.play()
                             playerDino.movement[1] = -1 * playerDino.jumpSpeed
                     elif np.array_equal(move, [0, 0, 1]):
-                        print("S'ACCROUPIR")
+                        # print("S'ACCROUPIR")
                         if not (playerDino.isJumping and playerDino.isDead):
                             playerDino.isDucking = True
 
@@ -512,7 +511,8 @@ def lancer_IA():
 
                     # TODO DONE Calcul du reward et du nouveau state
                     state_new = agent.get_state(playerDino, cacti, pteras)
-                    reward = agent.set_reward(playerDino)
+                    reward = agent.set_reward(playerDino, cacti, pteras)
+                    print(reward)
 
                     # TODO DONE Enregistrement dans la mémoire
                     if params['train']:
