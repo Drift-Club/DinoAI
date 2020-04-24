@@ -1,6 +1,6 @@
 from keras.optimizers import Adam
 from keras.models import Sequential
-from keras.layers.core import Dense
+from keras.layers import Dense
 import random
 import numpy as np
 import pandas as pd
@@ -72,7 +72,6 @@ class DQNAgent(object):
         if dino.isDead:  # Punition pour avoir été tué
             self.reward = -10
             return self.reward
-        ennemi_plus_proche = None
         for c in cacti:
             if c.rect.left <= 10:  # Rewards pour avoir dépassé un cactus / ptera
                 self.reward = 10

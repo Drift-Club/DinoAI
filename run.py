@@ -46,7 +46,7 @@ def définir_paramètres():
     params['third_layer_size'] = 150  # dans la troisième
     params['episodes'] = 150  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
-    params['batch_size'] = 1024  # 500 de base (ceci est un test)
+    params['batch_size'] = 500  # 500 de base (ceci est un test)
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
     params[
         'load_weights'] = False  # Charger les poids pré-calculés (regarder l'IA jouer avec ses connaissances ultérieures)
@@ -134,8 +134,8 @@ def load_sprite_sheet(
 
 def disp_gameOver_msg(retbutton_image, gameover_image):
     retbutton_rect = retbutton_image.get_rect()
-    retbutton_rect.centerx = width / 2
-    retbutton_rect.top = height * 0.52
+    retbutton_rect.centerx = int(width / 2)
+    retbutton_rect.top = int(height * 0.52)
 
     gameover_rect = gameover_image.get_rect()
     gameover_rect.centerx = int(width / 2)
@@ -343,49 +343,6 @@ class Scoreboard():
         self.temprect.left = 0
 
 
-def intro_screen():
-    temp_dino = Dino(44, 47)
-    temp_dino.isBlinking = True
-    gameStart = False
-
-    callout, callout_rect = load_image('credits.png', 196, 45, 2)
-    callout_rect.left = width * 0.05
-    callout_rect.top = height * 0.4
-
-    temp_ground, temp_ground_rect = load_sprite_sheet('ground.png', 15, 1, -1, -1, -1)
-    temp_ground_rect.left = width / 20
-    temp_ground_rect.bottom = height
-
-    while not gameStart:
-        if pygame.display.get_surface() is None:
-            print("Couldn't load display surface 1")
-            return True
-        else:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    return True
-                if event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE or event.key == pygame.K_UP:
-                        temp_dino.isJumping = True
-                        temp_dino.isBlinking = False
-                        temp_dino.movement[1] = -1 * temp_dino.jumpSpeed
-
-        temp_dino.update()
-
-        if pygame.display.get_surface() is not None:
-            screen.fill(background_col)
-            screen.blit(temp_ground[0], temp_ground_rect)
-            if temp_dino.isBlinking:
-                screen.blit(callout, callout_rect)
-            temp_dino.draw()
-
-            pygame.display.update()
-
-        clock.tick(FPS)
-        if temp_dino.isJumping == False and temp_dino.isBlinking == False:
-            gameStart = True
-
-
 def lancer_IA():
     # On crée l'agent de notre IA
     params = définir_paramètres()
@@ -448,11 +405,6 @@ def lancer_IA():
         HI_rect.top = height * 0.1
         HI_rect.left = width * 0.73
 
-        # TODO (à la fin ?) On effectue la première action de l'IA
-        # initialiser_partie(player1, game, ennemis1, agent, params['batch_size'])
-        # if display_option:
-        #    display(player1, ennemis1, game, record)
-
         # Lancement de la partie
         if not gameQuit:
             while startMenu:
@@ -492,8 +444,8 @@ def lancer_IA():
                         # print("SAUTE")
                         if playerDino.rect.bottom == int(0.98 * height):
                             playerDino.isJumping = True
-                            if pygame.mixer.get_init() is not None:
-                                jump_sound.play()
+                            # if pygame.mixer.get_init() is not None:
+                            # jump_sound.play()
                             playerDino.movement[1] = -1 * playerDino.jumpSpeed
                     elif np.array_equal(move, [0, 0, 1]):
                         # print("S'ACCROUPIR")
@@ -505,15 +457,15 @@ def lancer_IA():
                         c.movement[0] = -1 * gamespeed
                         if pygame.sprite.collide_mask(playerDino, c):
                             playerDino.isDead = True
-                            if pygame.mixer.get_init() is not None:
-                                die_sound.play()
+                            # if pygame.mixer.get_init() is not None:
+                            #   die_sound.play()
 
                     for p in pteras:
                         p.movement[0] = -1 * gamespeed
                         if pygame.sprite.collide_mask(playerDino, p):
                             playerDino.isDead = True
-                            if pygame.mixer.get_init() is not None:
-                                die_sound.play()
+                            # if pygame.mixer.get_init() is not None:
+                            #   die_sound.play()
 
                     # TODO DONE Calcul du reward et du nouveau state
                     state_new = agent.get_state(playerDino, cacti, pteras)
@@ -603,16 +555,18 @@ def lancer_IA():
                     if high_score != 0:
                         highsc.draw()
                         screen.blit(HI_image, HI_rect)
-
-                        # TODO DONE fin d'une partie, on affiche le record et enregistre les poids
-                        nb_jeux_joues += 1
-                        print("**************************************************************")
-                        print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
-                        score_plot.append(high_score)
-                        counter_plot.append(nb_jeux_joues)
-
                     pygame.display.update()
+
+                # TODO DONE fin d'une partie, on affiche le record et enregistre les poids
+                nb_jeux_joues += 1
+                print("**************************************************************")
+                print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
+                score_plot.append(high_score)
+                counter_plot.append(nb_jeux_joues)
+
                 clock.tick(FPS)
+
+
 
     if params['train']:
         agent.model.save_weights(params['weights_path'])
