@@ -38,7 +38,6 @@ def load_image(
         if color_key is -1:
             color_key = image.get_at((0, 0))
         image.set_colorkey(color_key, RLEACCEL)
-        print(RLEACCEL)
 
     if sizex != -1 or sizey != -1:
         image = pygame.transform.scale(image, (sizex, sizey))
@@ -408,9 +407,10 @@ def play():
             for c in cacti:
                 a += 1
                 c.movement[0] = -1 * gamespeed
-                #print("Cactus " + str(a))
-                #print(c.rect.bottom)
-                #print(c.rect.left)
+                if c.rect.left < 200:
+                    print("Cactus " + str(a))
+                    print(c.rect.bottom)
+                    print(c.rect.left)
                 if pygame.sprite.collide_mask(playerDino, c):
                     playerDino.isDead = True
                     if pygame.mixer.get_init() is not None:
@@ -419,9 +419,9 @@ def play():
             for p in pteras:
                 a += 1
                 p.movement[0] = -1 * gamespeed
-                print("Ptera " + str(a))
-                print(p.rect.bottom)
-                print(p.rect.left)
+                # print("Ptera " + str(a))
+                # print(p.rect.bottom)
+                # print(p.rect.left)
                 if pygame.sprite.collide_mask(playerDino, p):
                     playerDino.isDead = True
                     if pygame.mixer.get_init() is not None:

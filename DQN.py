@@ -1,10 +1,9 @@
 from keras.optimizers import Adam
 from keras.models import Sequential
-from keras.layers.core import Dense, Dropout
+from keras.layers.core import Dense
 import random
 import numpy as np
 import pandas as pd
-from operator import add
 import collections
 
 
@@ -29,7 +28,7 @@ class DQNAgent(object):
 
     def network(self):
         model = Sequential()
-        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=5))
+        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=6))
         model.add(Dense(output_dim=self.second_layer, activation='relu'))
         model.add(Dense(output_dim=self.third_layer, activation='relu'))
         model.add(Dense(output_dim=3, activation='softmax'))
@@ -40,24 +39,21 @@ class DQNAgent(object):
             model.load_weights(self.weights)
         return model
 
-    def get_state(self, dino, cacti, pteras): # TODO donner plus de vision au cerveau de l'IA
+    def get_state(self, dino, cacti, pteras):  # TODO donner plus de vision au cerveau de l'IA
         ennemi_plus_proche = None
         distance_min = 1000
         for c in cacti:
-            if c.rect.left < distance_min:
+            if distance_min > c.rect.left > 10:
                 ennemi_plus_proche = c
         for p in pteras:
-            if p.rect.left < distance_min:
+            if distance_min > p.rect.left > 10:
                 ennemi_plus_proche = p
         state = [
-            # Nouveaux états pour chromedino :
-            # Danger bas (cactus et certains pteras) ennemis.prochain() == cactus && cactus.rect.left < (visible à lecran) ou prochain() == ptera et visible et ptera.rect.bottom < 40?
-            # Danger haut (ptera volants) : ennemis.prochain() == ptera et visible et y > 40?
-            # Avancer droit (ne pas sauter) : !dino.isJumping et !dino.isDucking
-            # Saut : dino.isJumping
-            # Saccroupir : dino.isDucking
-            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left < 600 and ennemi_plus_proche.rect.bottom >= 100,  # danger bas (il faut sauter)
-            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left < 600 and ennemi_plus_proche.rect.bottom < 100,  # danger haut (baisse toi)
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 600 and ennemi_plus_proche.rect.bottom >= 100,
+            # danger bas (il faut sauter)
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 600 and ennemi_plus_proche.rect.bottom < 100,
+            # danger haut (baisse toi)
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 200,  # danger imminent
             not dino.isJumping and not dino.isDucking,  # dino avance droit
             dino.isJumping,  # le dino est en saut
             dino.isDucking  # le dino est accroupi
@@ -71,11 +67,18 @@ class DQNAgent(object):
 
         return np.asarray(state)
 
-    def set_reward(self, dino):
-        self.reward = 0.1
-        if dino.isDead:
+    def set_reward(self, dino, cacti, pteras):
+        self.reward = 0
+        if dino.isDead:  # Punition pour avoir été tué
             self.reward = -10
             return self.reward
+        ennemi_plus_proche = None
+        for c in cacti:
+            if c.rect.left <= 10:  # Rewards pour avoir dépassé un cactus / ptera
+                self.reward = 10
+        for p in pteras:
+            if p.rect.left <= 10:
+                self.reward = 10
         return self.reward
 
     def remember(self, state, action, reward, next_state, done):
@@ -97,7 +100,7 @@ class DQNAgent(object):
     def train_short_memory(self, state, action, reward, next_state, done):
         target = reward
         if not done:
-            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 5)))[0])
-        target_f = self.model.predict(state.reshape((1, 5)))
+            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 6)))[0])
+        target_f = self.model.predict(state.reshape((1, 6)))
         target_f[0][np.argmax(action)] = target
-        self.model.fit(state.reshape((1, 5)), target_f, epochs=1, verbose=0)
+        self.model.fit(state.reshape((1, 6)), target_f, epochs=1, verbose=0)
