@@ -19,6 +19,7 @@ gravity = 0.65
 black = (0, 0, 0)
 white = (255, 255, 255)
 background_col = (235, 235, 235)
+RLEACCEL = 16384
 
 high_score = 0
 
@@ -26,9 +27,10 @@ screen = pygame.display.set_mode(scr_size)
 clock = pygame.time.Clock()
 pygame.display.set_caption("chrome://dino")
 
-jump_sound = pygame.mixer.Sound('sprites/jump.wav')
-die_sound = pygame.mixer.Sound('sprites/die.wav')
-checkPoint_sound = pygame.mixer.Sound('sprites/checkPoint.wav')
+jump_sound = pygame.mixer.Sound('chrome_dino/sprites/jump.wav')
+die_sound = pygame.mixer.Sound('chrome_dino/sprites/die.wav')
+checkPoint_sound = pygame.mixer.Sound('chrome_dino/sprites/checkPoint.wav')
+
 
 #######################################
 #           Code de l'IA
@@ -65,92 +67,6 @@ def initialiser_partie(dino, game, ennemis, agent, batch_size):
     agent.replay_new(agent.memory, batch_size)
 
 
-# TODO modifier pour adapter l'IA au jeu
-# Gère la partie en cours
-def nouvelle_partie(display_option, speed, params):
-    # On crée l'agent de notre IA
-    agent = DQNAgent(params)
-
-    # S'il existe des poids (ie on a déjà fait tourner l'IA, alors on les charge)
-    weights_filepath = params['weights_path']
-    if params['load_weights']:
-        agent.model.load_weights(weights_filepath)
-        print("weights loaded")
-
-    nb_jeux_joues = 0
-    score_plot = []
-    counter_plot = []
-    record = 0
-
-    # On fait jouer notre IA autant de parties que requis
-    while nb_jeux_joues < params['episodes']:
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
-                quit()
-
-        # Initialisation de la partie en cours
-        game = Game(440, 440)
-        player1 = game.player
-        ennemis1 = game.ennemis
-
-        # On effectue la première action de l'IA
-        initialiser_partie(player1, game, ennemis1, agent, params['batch_size'])
-        if display_option:
-            display(player1, ennemis1, game, record)
-
-        # Tant que l'agent n'a pas perdu
-        while not game.crash:
-            if not params['train']:  # Pas d'aléatoire si on entraîne pas l'IA
-                agent.epsilon = 0
-            else:
-                # La fonction agent.epsilon détermine le caractère aléatoire des actions
-                agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
-
-            # Récupère l'état précédent
-            state_old = agent.get_state(game, player1, ennemis1)
-
-            # Soit on performe une action au hasard si on sait rien faire,
-            # sinon on prend une action en fonction des connaissances de l'IA
-            if randint(0, 1) < agent.epsilon:
-                final_move = to_categorical(randint(0, 2), num_classes=3)
-            else:
-                # On décide de l'action en fonction de l'état précédent
-                prediction = agent.model.predict(state_old.reshape((1, 11)))
-                final_move = to_categorical(np.argmax(prediction[0]), num_classes=3)
-
-            # On effectue la nouvelle action
-            player1.do_move(final_move, player1.x, player1.y, game, ennemis1, agent)
-            state_new = agent.get_state(game, player1, ennemis1)
-
-            # On calcule le reward, si le joueur a perdu ou continue de survivre
-            reward = agent.set_reward(player1, game.crash)
-
-            if params['train']:
-                # On stocke cette action dans la mémoire à court terme
-                agent.train_short_memory(state_old, final_move, reward, state_new, game.crash)
-                # On stocke cette action dans la mémoire à long terme
-                agent.remember(state_old, final_move, reward, state_new, game.crash)
-
-            # On enregistre le high score
-            record = high_score
-            if display_option:
-                display(player1, ennemis1, game, record)
-                pygame.time.wait(speed)
-
-        # La partie est terminée, on en tire toutes les conclusions ...
-        if params['train']:
-            agent.replay_new(agent.memory, params['batch_size'])
-
-        # Fin d'une partie, on affiche le record actuel
-        nb_jeux_joues += 1
-        print(f'Partie n° {nb_jeux_joues}      Score: {game.score}')
-        score_plot.append(game.score)
-        counter_plot.append(nb_jeux_joues)
-    if params['train']:
-        agent.model.save_weights(params['weights_path'])
-
-
 #################################
 # Contenu du jeu qui n'a pas changé modifié pour être joué par notre agent
 #################################
@@ -160,7 +76,7 @@ def load_image(
         sizey=-1,
         color_key=None,
 ):
-    fullname = os.path.join('sprites', name)
+    fullname = os.path.join('chrome_dino/sprites', name)
     image = pygame.image.load(fullname)
     image = image.convert()
     if color_key is not None:
@@ -182,7 +98,7 @@ def load_sprite_sheet(
         scaley=-1,
         colorkey=None,
 ):
-    fullname = os.path.join('sprites', sheetname)
+    fullname = os.path.join('chrome_dino/sprites', sheetname)
     sheet = pygame.image.load(fullname)
     sheet = sheet.convert()
 
@@ -493,6 +409,7 @@ def lancer_IA():
                 quit()
 
         # Initialisation de la partie en cours
+        print("Partie chargée")
         global high_score
         gamespeed = 4
         startMenu = False
@@ -527,12 +444,12 @@ def lancer_IA():
         HI_rect.left = width * 0.73
 
         # TODO (à la fin ?) On effectue la première action de l'IA
-        #initialiser_partie(player1, game, ennemis1, agent, params['batch_size'])
-        #if display_option:
+        # initialiser_partie(player1, game, ennemis1, agent, params['batch_size'])
+        # if display_option:
         #    display(player1, ennemis1, game, record)
 
         # Lancement de la partie
-        while not gameQuit:
+        if not gameQuit:
             while startMenu:
                 pass
             while not gameOver:
@@ -541,187 +458,159 @@ def lancer_IA():
                     gameQuit = True
                     gameOver = True
                 else:
-                    # TODO Récupère l'état
-
-                    # TODO Soit on performe une action au hasard si on sait rien faire,
-                    # TODO sinon on prend une action en fonction des connaissances de l'IA (retirer events)
-
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT:
-                            gameQuit = True
-                            gameOver = True
-
-                        if event.type == pygame.KEYDOWN:
-                            if event.key == pygame.K_SPACE:
-                                if playerDino.rect.bottom == int(0.98 * height):
-                                    playerDino.isJumping = True
-                                    if pygame.mixer.get_init() is not None:
-                                        jump_sound.play()
-                                    playerDino.movement[1] = -1 * playerDino.jumpSpeed
-
-                            if event.key == pygame.K_DOWN:
-                                if not (playerDino.isJumping and playerDino.isDead):
-                                    playerDino.isDucking = True
-
-                        if event.type == pygame.KEYUP:
-                            if event.key == pygame.K_DOWN:
-                                playerDino.isDucking = False
-
-                # Mouvement des ennemis et détection des collisions
-                for c in cacti:
-                    c.movement[0] = -1 * gamespeed
-                    if pygame.sprite.collide_mask(playerDino, c):
-                        playerDino.isDead = True
-                        if pygame.mixer.get_init() is not None:
-                            die_sound.play()
-
-                for p in pteras:
-                    p.movement[0] = -1 * gamespeed
-                    if pygame.sprite.collide_mask(playerDino, p):
-                        playerDino.isDead = True
-                        if pygame.mixer.get_init() is not None:
-                            die_sound.play()
-
-                # TODO Calcul du reward et du nouveau state
-                # TODO Enregistrement dans la mémoire
-
-                # Génération de nouveaux ennemis
-                if len(cacti) < 2:
-                    if len(cacti) == 0:
-                        last_obstacle.empty()
-                        last_obstacle.add(Cactus(gamespeed, 40, 40))
+                    # TODO DONE Calcul du epsilon
+                    if not params['train']:  # Pas d'aléatoire si on entraîne pas l'IA
+                        agent.epsilon = 0
                     else:
-                        for l in last_obstacle:
-                            if l.rect.right < width * 0.7 and random.randrange(0, 50) == 10:
-                                last_obstacle.empty()
-                                last_obstacle.add(Cactus(gamespeed, 40, 40))
+                        # La fonction agent.epsilon détermine le caractère aléatoire des actions
+                        agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
 
-                if len(pteras) == 0 and random.randrange(0, 200) == 10 and counter > 500:
-                    for l in last_obstacle:
-                        if l.rect.right < width * 0.8:
+                    # TODO DONE Récupère l'état
+                    state_old = agent.get_state(playerDino, cacti, pteras)
+
+                    # TODO DONE Soit on performe une action au hasard si on sait rien faire,
+                    # TODO DONE sinon on prend une action en fonction des connaissances de l'IA (retirer events)
+                    if randint(0, 1) < agent.epsilon:
+                        move = to_categorical(randint(0, 2), num_classes=3)
+                    else:
+                        # On décide de l'action en fonction de l'état précédent
+                        prediction = agent.model.predict(state_old.reshape((1, 5)))
+                        move = to_categorical(np.argmax(prediction[0]), num_classes=3)
+                        # Le final move / action est un array [rester_droit sauter saccroupir]
+
+                    # TODO DONE on effectue l'action
+                    if np.array_equal(move, [1, 0, 0]):
+                        print("TOUT DROIT")
+                        playerDino.isDucking = False
+                        # On avance tt droit, si le dino est accroupi il se relève
+                    elif np.array_equal(move, [0, 1, 0]):
+                        print("SAUTE")
+                        if playerDino.rect.bottom == int(0.98 * height):
+                            playerDino.isJumping = True
+                            if pygame.mixer.get_init() is not None:
+                                jump_sound.play()
+                            playerDino.movement[1] = -1 * playerDino.jumpSpeed
+                    elif np.array_equal(move, [0, 0, 1]):
+                        print("S'ACCROUPIR")
+                        if not (playerDino.isJumping and playerDino.isDead):
+                            playerDino.isDucking = True
+
+                    # Mouvement des ennemis et détection des collisions
+                    for c in cacti:
+                        c.movement[0] = -1 * gamespeed
+                        if pygame.sprite.collide_mask(playerDino, c):
+                            playerDino.isDead = True
+                            if pygame.mixer.get_init() is not None:
+                                die_sound.play()
+
+                    for p in pteras:
+                        p.movement[0] = -1 * gamespeed
+                        if pygame.sprite.collide_mask(playerDino, p):
+                            playerDino.isDead = True
+                            if pygame.mixer.get_init() is not None:
+                                die_sound.play()
+
+                    # TODO DONE Calcul du reward et du nouveau state
+                    state_new = agent.get_state(playerDino, cacti, pteras)
+                    reward = agent.set_reward(playerDino)
+
+                    # TODO DONE Enregistrement dans la mémoire
+                    if params['train']:
+                        # On stocke cette action dans la mémoire à court terme
+                        agent.train_short_memory(state_old, move, reward, state_new, playerDino.isDead)
+                        # On stocke cette action dans la mémoire à long terme
+                        agent.remember(state_old, move, reward, state_new, playerDino.isDead)
+
+                    # Génération de nouveaux ennemis
+                    if len(cacti) < 2:
+                        if len(cacti) == 0:
                             last_obstacle.empty()
-                            last_obstacle.add(Ptera(gamespeed, 46, 40))
+                            last_obstacle.add(Cactus(gamespeed, 40, 40))
+                        else:
+                            for l in last_obstacle:
+                                if l.rect.right < width * 0.7 and random.randrange(0, 50) == 10:
+                                    last_obstacle.empty()
+                                    last_obstacle.add(Cactus(gamespeed, 40, 40))
 
-                if len(clouds) < 5 and random.randrange(0, 300) == 10:
-                    Cloud(width, random.randrange(height / 5, height / 2))
+                    if len(pteras) == 0 and random.randrange(0, 200) == 10 and counter > 500:
+                        for l in last_obstacle:
+                            if l.rect.right < width * 0.8:
+                                last_obstacle.empty()
+                                last_obstacle.add(Ptera(gamespeed, 46, 40))
 
-                # Màjs graphiques
-                playerDino.update()
-                cacti.update()
-                pteras.update()
-                clouds.update()
-                new_ground.update()
-                scb.update(playerDino.score)
-                highsc.update(high_score)
+                    if len(clouds) < 5 and random.randrange(0, 300) == 10:
+                        Cloud(width, random.randrange(height / 5, height / 2))
 
-                if pygame.display.get_surface() is not None:
-                    screen.fill(background_col)
-                    new_ground.draw()
-                    clouds.draw(screen)
-                    scb.draw()
-                    if high_score != 0:
-                        highsc.draw()
-                        screen.blit(HI_image, HI_rect)
-                    cacti.draw(screen)
-                    pteras.draw(screen)
-                    playerDino.draw()
+                    # Màjs graphiques
+                    playerDino.update()
+                    cacti.update()
+                    pteras.update()
+                    clouds.update()
+                    new_ground.update()
+                    scb.update(playerDino.score)
+                    highsc.update(high_score)
 
-                    pygame.display.update()
-                clock.tick(FPS)
+                    if pygame.display.get_surface() is not None:
+                        screen.fill(background_col)
+                        new_ground.draw()
+                        clouds.draw(screen)
+                        scb.draw()
+                        if high_score != 0:
+                            highsc.draw()
+                            screen.blit(HI_image, HI_rect)
+                        cacti.draw(screen)
+                        pteras.draw(screen)
+                        playerDino.draw()
 
-                # Mort du dino, récupérer high score
-                if playerDino.isDead:
-                    gameOver = True
-                    if playerDino.score > high_score:
-                        high_score = playerDino.score
+                        pygame.display.update()
+                    clock.tick(FPS)
 
-                if counter % 700 == 699:
-                    new_ground.speed -= 1
-                    gamespeed += 1
+                    # Mort du dino, récupérer high score
+                    if playerDino.isDead:
+                        gameOver = True
+                        if playerDino.score > high_score:
+                            high_score = playerDino.score
 
-                counter = (counter + 1)
+                    if counter % 700 == 699:
+                        new_ground.speed -= 1
+                        gamespeed += 1
 
-            if gameQuit:
-                break
+                    counter = (counter + 1)
 
-            while gameOver:
+                if gameQuit:
+                    break
+
+            # Déclenchée pour le game over
+            if gameOver:
                 if pygame.display.get_surface() is None:
                     print("Couldn't load display surface 3")
                     gameQuit = True
                     gameOver = False
                 else:
-                    # TODO Le jeu est terminé, on tire les conséquences
+                    # TODO DONE Le jeu est terminé, on tire les conséquences
+                    if params['train']:
+                        agent.replay_new(agent.memory, params['batch_size'])
 
-                    for event in pygame.event.get():
-                        if event.type == pygame.QUIT:
-                            gameQuit = True
-                            gameOver = False
-                        if event.type == pygame.KEYDOWN:
-                            if event.key == pygame.K_ESCAPE:
-                                gameQuit = True
-                                gameOver = False
-
-                            if event.key == pygame.K_RETURN or event.key == pygame.K_SPACE:
-                                gameOver = False
-                                play()
                 highsc.update(high_score)
                 if pygame.display.get_surface() is not None:
                     disp_gameOver_msg(retbutton_image, gameover_image)
                     if high_score != 0:
                         highsc.draw()
                         screen.blit(HI_image, HI_rect)
+
+                        # TODO DONE fin d'une partie, on affiche le record et enregistre les poids
+                        nb_jeux_joues += 1
+                        print("**************************************************************")
+                        print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
+                        print("**************************************************************")
+                        score_plot.append(high_score)
+                        counter_plot.append(nb_jeux_joues)
+
                     pygame.display.update()
                 clock.tick(FPS)
 
-        ################################################################### IA ZONE
-        if not params['train']:  # Pas d'aléatoire si on entraîne pas l'IA
-                agent.epsilon = 0
-            else:
-                # La fonction agent.epsilon détermine le caractère aléatoire des actions
-                agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
-
-            # Récupère l'état précédent
-            state_old = agent.get_state(game, player1, ennemis1)
-
-            # Soit on performe une action au hasard si on sait rien faire,
-            # sinon on prend une action en fonction des connaissances de l'IA
-            if randint(0, 1) < agent.epsilon:
-                final_move = to_categorical(randint(0, 2), num_classes=3)
-            else:
-                # On décide de l'action en fonction de l'état précédent
-                prediction = agent.model.predict(state_old.reshape((1, 11)))
-                final_move = to_categorical(np.argmax(prediction[0]), num_classes=3)
-
-            # On effectue la nouvelle action
-            player1.do_move(final_move, player1.x, player1.y, game, ennemis1, agent)
-            state_new = agent.get_state(game, player1, ennemis1)
-
-            # On calcule le reward, si le joueur a perdu ou continue de survivre
-            reward = agent.set_reward(player1, game.crash)
-
-            if params['train']:
-                # On stocke cette action dans la mémoire à court terme
-                agent.train_short_memory(state_old, final_move, reward, state_new, game.crash)
-                # On stocke cette action dans la mémoire à long terme
-                agent.remember(state_old, final_move, reward, state_new, game.crash)
-
-            # On enregistre le high score
-            record = high_score
-            if display_option:
-                display(player1, ennemis1, game, record)
-                pygame.time.wait(speed)
-
-        # La partie est terminée, on en tire toutes les conclusions ...
-        if params['train']:
-            agent.replay_new(agent.memory, params['batch_size'])
-
-        # Fin d'une partie, on affiche le record actuel
-        nb_jeux_joues += 1
-        print(f'Partie n° {nb_jeux_joues}      Score: {game.score}')
-        score_plot.append(game.score)
-        counter_plot.append(nb_jeux_joues)
     if params['train']:
         agent.model.save_weights(params['weights_path'])
 
 
-nouvelle_partie()
+lancer_IA()
