@@ -29,7 +29,7 @@ class DQNAgent(object):
 
     def network(self):
         model = Sequential()
-        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=11))
+        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=5))
         model.add(Dense(output_dim=self.second_layer, activation='relu'))
         model.add(Dense(output_dim=self.third_layer, activation='relu'))
         model.add(Dense(output_dim=3, activation='softmax'))
@@ -40,61 +40,28 @@ class DQNAgent(object):
             model.load_weights(self.weights)
         return model
 
-    # TODO adaptation des states pour chrome/dino
-    def get_state(self, game, player, ennemis):
+    def get_state(self, dino, cacti, pteras): # TODO donner plus de vision au cerveau de l'IA
+        ennemi_plus_proche = None
+        distance_min = 1000
+        for c in cacti:
+            if c.rect.left < distance_min:
+                ennemi_plus_proche = c
+        for p in pteras:
+            if p.rect.left < distance_min:
+                ennemi_plus_proche = p
         state = [
             # Nouveaux états pour chromedino :
-            # Danger bas (cactus et certains pteras) ennemis.prochain() == cactus && cactus.x < (visible à lecran) ou prochain() == ptera et visible et ptera.y < 40?
+            # Danger bas (cactus et certains pteras) ennemis.prochain() == cactus && cactus.rect.left < (visible à lecran) ou prochain() == ptera et visible et ptera.rect.bottom < 40?
             # Danger haut (ptera volants) : ennemis.prochain() == ptera et visible et y > 40?
             # Avancer droit (ne pas sauter) : !dino.isJumping et !dino.isDucking
             # Saut : dino.isJumping
             # Saccroupir : dino.isDucking
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left < 600 and ennemi_plus_proche.rect.bottom >= 100,  # danger bas (il faut sauter)
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left < 600 and ennemi_plus_proche.rect.bottom < 100,  # danger haut (baisse toi)
+            not dino.isJumping and not dino.isDucking,  # dino avance droit
+            dino.isJumping,  # le dino est en saut
+            dino.isDucking  # le dino est accroupi
         ]
-        """   
-                (player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 >= (game.game_width - 20))) or (
-                        player.x_change == -20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [-20, 0])) in player.position) or
-                        player.position[-1][0] - 20 < 20)) or (player.x_change == 0 and player.y_change == -20 and (
-                        (list(map(add, player.position[-1], [0, -20])) in player.position) or
-                        player.position[-1][-1] - 20 < 20)) or (player.x_change == 0 and player.y_change == 20 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger straight
-
-                (player.x_change == 0 and player.y_change == -20 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                        player.x_change == 0 and player.y_change == 20 and ((list(map(add, player.position[-1],
-                                                                                      [-20, 0])) in player.position) or
-                                                                            player.position[-1][0] - 20 < 20)) or (
-                        player.x_change == -20 and player.y_change == 0 and ((list(map(
-                    add, player.position[-1], [0, -20])) in player.position) or player.position[-1][-1] - 20 < 20)) or (
-                        player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or player.position[-1][
-                    -1] + 20 >= (game.game_height - 20))),  # danger right
-
-                (player.x_change == 0 and player.y_change == 20 and (
-                        (list(map(add, player.position[-1], [20, 0])) in player.position) or
-                        player.position[-1][0] + 20 > (game.game_width - 20))) or (
-                        player.x_change == 0 and player.y_change == -20 and ((list(map(
-                    add, player.position[-1], [-20, 0])) in player.position) or player.position[-1][0] - 20 < 20)) or (
-                        player.x_change == 20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, -20])) in player.position) or player.position[-1][
-                    -1] - 20 < 20)) or (
-                        player.x_change == -20 and player.y_change == 0 and (
-                        (list(map(add, player.position[-1], [0, 20])) in player.position) or
-                        player.position[-1][-1] + 20 >= (game.game_height - 20))),  # danger left
-
-                player.x_change == -20,  # move left
-                player.x_change == 20,  # move right
-                player.y_change == -20,  # move up
-                player.y_change == 20,  # move down
-                ennemis.x_food < player.x,  # food left
-                ennemis.x_food > player.x,  # food right
-                ennemis.y_food < player.y,  # food up
-                ennemis.y_food > player.y  # food down
-        """
 
         for i in range(len(state)):
             if state[i]:
@@ -104,7 +71,7 @@ class DQNAgent(object):
 
         return np.asarray(state)
 
-    def set_reward(self, dino, crash):
+    def set_reward(self, dino):
         self.reward = 0.1
         if dino.isDead:
             self.reward = -10
@@ -130,7 +97,7 @@ class DQNAgent(object):
     def train_short_memory(self, state, action, reward, next_state, done):
         target = reward
         if not done:
-            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 11)))[0])
-        target_f = self.model.predict(state.reshape((1, 11)))
+            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 5)))[0])
+        target_f = self.model.predict(state.reshape((1, 5)))
         target_f[0][np.argmax(action)] = target
-        self.model.fit(state.reshape((1, 11)), target_f, epochs=1, verbose=0)
+        self.model.fit(state.reshape((1, 5)), target_f, epochs=1, verbose=0)
