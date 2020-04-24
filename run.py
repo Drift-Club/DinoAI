@@ -46,7 +46,7 @@ def définir_paramètres():
     params['third_layer_size'] = 150  # dans la troisième
     params['episodes'] = 150  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
-    params['batch_size'] = 500  # 500 de base (ceci est un test)
+    params['batch_size'] = 1024  # 500 de base (ceci est un test)
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
     params[
         'load_weights'] = False  # Charger les poids pré-calculés (regarder l'IA jouer avec ses connaissances ultérieures)
@@ -563,10 +563,10 @@ def lancer_IA():
                 print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
                 score_plot.append(high_score)
                 counter_plot.append(nb_jeux_joues)
+                if nb_jeux_joues * params['epsilon_decay_linear'] >= 1:
+                    print("Utilisation de la mémoire uniquement")
 
                 clock.tick(FPS)
-
-
 
     if params['train']:
         agent.model.save_weights(params['weights_path'])
