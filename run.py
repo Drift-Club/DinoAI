@@ -5,6 +5,8 @@ import numpy as np
 import sys
 from DQN import DQNAgent
 from random import randint
+import seaborn as sns
+import matplotlib.pyplot as plt
 from keras.utils import to_categorical  # bibliothèque Keras permettant un dvp IA de haut niveau
 
 #######################################
@@ -39,33 +41,19 @@ checkPoint_sound = pygame.mixer.Sound('chrome_dino/sprites/checkPoint.wav')
 #   On définit les paramètres de l'IA manuellement
 def définir_paramètres():
     params = dict()
-    params['epsilon_decay_linear'] = 1 / 75  # La fonction agent.epsilon détermine le caractère aléatoire des actions
-    params['learning_rate'] = 0.0005
+    params['epsilon_decay_linear'] = 1 / 80  # La fonction agent.epsilon détermine le caractère aléatoire des actions
+    params['learning_rate'] = 0.001
     params['first_layer_size'] = 150  # neurons dans la première couche
     params['second_layer_size'] = 150  # dans la deuxième
     params['third_layer_size'] = 150  # dans la troisième
     params['episodes'] = 150  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
-    params['batch_size'] = 1024  # 500 de base (ceci est un test)
+    params['batch_size'] = 500  # 500 de base (ceci est un test)
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
     params[
         'load_weights'] = False  # Charger les poids pré-calculés (regarder l'IA jouer avec ses connaissances ultérieures)
     params['train'] = True  # Entraîner l'IA, ne pas utiliser les poids
     return params
-
-
-# TODO modifier pour relier l'IA au chrome/dino
-# Initialise une partie avec les bons paramètres
-def initialiser_partie(dino, game, ennemis, agent, batch_size):
-    state_init1 = agent.get_state(game, dino, ennemis)  # l'état est un array du type [0 0 0 0 0 0 0 0 0 1 0 0 0 1 0 0]
-    action = [1, 0, 0]  # l'action est un array du type [avancer, sauter, saccroupir]
-    dino.do_move(action, dino.x, dino.y, game, ennemis, agent)
-    state_init2 = agent.get_state(game, dino, ennemis)
-
-    # On définit un reward (récompense) calculée en fonction de l'action prise
-    reward1 = agent.set_reward(dino, game.crash)
-    agent.remember(state_init1, action, reward1, state_init2, game.crash)
-    agent.replay_new(agent.memory, batch_size)
 
 
 #################################
@@ -130,6 +118,19 @@ def load_sprite_sheet(
     sprite_rect = sprites[0].get_rect()
 
     return sprites, sprite_rect
+
+
+def plot_seaborn(array_counter, array_score):
+    sns.set(color_codes=True)
+    ax = sns.regplot(
+        np.array([array_counter])[0],
+        np.array([array_score])[0],
+        color="b",
+        x_jitter=.1,
+        line_kws={'color': 'green'}
+    )
+    ax.set(xlabel='games', ylabel='score')
+    plt.show()
 
 
 def disp_gameOver_msg(retbutton_image, gameover_image):
@@ -363,6 +364,8 @@ def lancer_IA():
     score_plot = []
     counter_plot = []
     record = 0
+    avg_scores_aleatoires = 20
+    avg_scores_memoire = 20
 
     # On fait jouer notre IA autant de parties que requis
     while nb_jeux_joues < params['episodes']:
@@ -431,7 +434,7 @@ def lancer_IA():
                         move = to_categorical(randint(0, 2), num_classes=3)
                     else:
                         # On décide de l'action en fonction de l'état précédent
-                        prediction = agent.model.predict(state_old.reshape((1, 6)))
+                        prediction = agent.model.predict(state_old.reshape((1, 8)))
                         move = to_categorical(np.argmax(prediction[0]), num_classes=3)
                         # Le final move / action est un array [rester_droit sauter saccroupir]
 
@@ -527,7 +530,7 @@ def lancer_IA():
                         gameOver = True
                         if playerDino.score > high_score:
                             high_score = playerDino.score
-                            record = playerDino
+                            record = playerDino.score
 
                     if counter % 700 == 699:
                         new_ground.speed -= 1
@@ -561,21 +564,27 @@ def lancer_IA():
                 nb_jeux_joues += 1
                 print("**************************************************************")
                 print(f'Partie n° {nb_jeux_joues}      Score: {playerDino.score}')
-                score_plot.append(high_score)
+                score_plot.append(playerDino.score)
                 counter_plot.append(nb_jeux_joues)
                 if nb_jeux_joues * params['epsilon_decay_linear'] >= 1:
                     print("Utilisation de la mémoire uniquement")
+                    avg_scores_memoire = (avg_scores_memoire + playerDino.score) / 2
+                else:
+                    avg_scores_aleatoires = (avg_scores_aleatoires + playerDino.score) / 2
 
                 clock.tick(FPS)
 
     if params['train']:
         agent.model.save_weights(params['weights_path'])
+    # plot_seaborn(counter_plot, score_plot)
     print("***************************************************")
     print("Fin de l'entraînement de cette IA.")
     print("Liste des scores : ")
     print(*score_plot)
     print("Record : " + str(record))
     print("Entraînée sur " + str(params["episodes"]) + " épisodes")
+    print("Moyenne aléatoire : " + str(avg_scores_aleatoires))
+    print("Moyenne supervisée : " + str(avg_scores_memoire))
     print("***************************************************")
 
 

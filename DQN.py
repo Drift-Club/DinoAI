@@ -28,7 +28,7 @@ class DQNAgent(object):
 
     def network(self):
         model = Sequential()
-        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=6))
+        model.add(Dense(output_dim=self.first_layer, activation='relu', input_dim=8))
         model.add(Dense(output_dim=self.second_layer, activation='relu'))
         model.add(Dense(output_dim=self.third_layer, activation='relu'))
         model.add(Dense(output_dim=3, activation='softmax'))
@@ -39,7 +39,7 @@ class DQNAgent(object):
             model.load_weights(self.weights)
         return model
 
-    def get_state(self, dino, cacti, pteras):  # TODO donner plus de vision au cerveau de l'IA
+    def get_state(self, dino, cacti, pteras):
         ennemi_plus_proche = None
         distance_min = 1000
         for c in cacti:
@@ -53,7 +53,9 @@ class DQNAgent(object):
             # danger bas (il faut sauter)
             ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 600 and ennemi_plus_proche.rect.bottom < 100,
             # danger haut (baisse toi)
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 300,  # approche danger imminent
             ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 200,  # danger imminent
+            ennemi_plus_proche is not None and ennemi_plus_proche.rect.left <= 100,  # danger ultra imminent
             not dino.isJumping and not dino.isDucking,  # dino avance droit
             dino.isJumping,  # le dino est en saut
             dino.isDucking  # le dino est accroupi
@@ -99,7 +101,7 @@ class DQNAgent(object):
     def train_short_memory(self, state, action, reward, next_state, done):
         target = reward
         if not done:
-            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 6)))[0])
-        target_f = self.model.predict(state.reshape((1, 6)))
+            target = reward + self.gamma * np.amax(self.model.predict(next_state.reshape((1, 8)))[0])
+        target_f = self.model.predict(state.reshape((1, 8)))
         target_f[0][np.argmax(action)] = target
-        self.model.fit(state.reshape((1, 6)), target_f, epochs=1, verbose=0)
+        self.model.fit(state.reshape((1, 8)), target_f, epochs=1, verbose=0)
