@@ -7,6 +7,7 @@ from DQN import DQNAgent
 from random import randint
 import seaborn as sns
 import matplotlib.pyplot as plt
+import time
 from keras.utils import to_categorical  # bibliothèque Keras permettant un dvp IA de haut niveau
 
 #######################################
@@ -41,12 +42,12 @@ checkPoint_sound = pygame.mixer.Sound('chrome_dino/sprites/checkPoint.wav')
 #   On définit les paramètres de l'IA manuellement
 def définir_paramètres():
     params = dict()
-    params['epsilon_decay_linear'] = 1 / 80  # La fonction agent.epsilon détermine le caractère aléatoire des actions
+    params['epsilon_decay_linear'] = 1 / 75  # La fonction agent.epsilon détermine le caractère aléatoire des actions
     params['learning_rate'] = 0.001
     params['first_layer_size'] = 150  # neurons dans la première couche
     params['second_layer_size'] = 150  # dans la deuxième
     params['third_layer_size'] = 150  # dans la troisième
-    params['episodes'] = 150  # Nombre de parties à jouer pour entraîner l'IA
+    params['episodes'] = 500  # Nombre de parties à jouer pour entraîner l'IA
     params['memory_size'] = 2500  # Taille de la mémoire
     params['batch_size'] = 500  # 500 de base (ceci est un test)
     params['weights_path'] = 'weights/weights.hdf5'  # endroit de stockages des poids (weights)
@@ -255,7 +256,7 @@ class Ptera(pygame.sprite.Sprite):
         pygame.sprite.Sprite.__init__(self, self.containers)
         self.images, self.rect = load_sprite_sheet('ptera.png', 2, 1, sizex, sizey, -1)
         self.ptera_height = [height * 0.82, height * 0.75, height * 0.60]
-        self.rect.centery = self.ptera_height[random.randrange(0, 3)]
+        self.rect.centery = int(self.ptera_height[random.randrange(0, 3)])
         self.rect.left = width + self.rect.width
         self.image = self.images[0]
         self.movement = [-1 * speed, 0]
@@ -385,6 +386,7 @@ def lancer_IA():
         scb = Scoreboard()
         highsc = Scoreboard(width * 0.78)
         counter = 0
+        canAIAct = 0  # 0 means act, other number means wait
 
         cacti = pygame.sprite.Group()
         pteras = pygame.sprite.Group()
@@ -418,42 +420,43 @@ def lancer_IA():
                     gameQuit = True
                     gameOver = True
                 else:
-                    # TODO DONE Calcul du epsilon
-                    if not params['train']:  # Pas d'aléatoire si on entraîne pas l'IA
-                        agent.epsilon = 0
-                    else:
-                        # La fonction agent.epsilon détermine le caractère aléatoire des actions
-                        agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
+                    if canAIAct == 0: # TODO amélioration : passer l'array du jeu en paramètre au lieu de ces états pétés, il faut alors un ConvNet
+                        # TODO DONE Calcul du epsilon
+                        if not params['train']:  # Pas d'aléatoire si on entraîne pas l'IA
+                            agent.epsilon = 0
+                        else:
+                            # La fonction agent.epsilon détermine le caractère aléatoire des actions
+                            agent.epsilon = 1 - (nb_jeux_joues * params['epsilon_decay_linear'])
 
-                    # TODO DONE Récupère l'état
-                    state_old = agent.get_state(playerDino, cacti, pteras)
+                        # TODO DONE Récupère l'état
+                        state_old = agent.get_state(playerDino, cacti, pteras)
 
-                    # TODO DONE Soit on performe une action au hasard si on sait rien faire,
-                    # TODO DONE sinon on prend une action en fonction des connaissances de l'IA (retirer events)
-                    if randint(0, 1) < agent.epsilon:
-                        move = to_categorical(randint(0, 2), num_classes=3)
-                    else:
-                        # On décide de l'action en fonction de l'état précédent
-                        prediction = agent.model.predict(state_old.reshape((1, 8)))
-                        move = to_categorical(np.argmax(prediction[0]), num_classes=3)
-                        # Le final move / action est un array [rester_droit sauter saccroupir]
+                        # TODO DONE Soit on performe une action au hasard si on sait rien faire,
+                        # TODO DONE sinon on prend une action en fonction des connaissances de l'IA (retirer events)
+                        if randint(0, 1) < agent.epsilon:
+                            move = to_categorical(randint(0, 2), num_classes=3)
+                        else:
+                            # On décide de l'action en fonction de l'état précédent
+                            prediction = agent.model.predict(state_old.reshape((1, 8)))
+                            move = to_categorical(np.argmax(prediction[0]), num_classes=3)
+                            # Le final move / action est un array [rester_droit sauter saccroupir]
 
-                    # TODO DONE on effectue l'action
-                    if np.array_equal(move, [1, 0, 0]):
-                        # print("TOUT DROIT")
-                        playerDino.isDucking = False
-                        # On avance tt droit, si le dino est accroupi il se relève
-                    elif np.array_equal(move, [0, 1, 0]):
-                        # print("SAUTE")
-                        if playerDino.rect.bottom == int(0.98 * height):
-                            playerDino.isJumping = True
-                            # if pygame.mixer.get_init() is not None:
-                            # jump_sound.play()
-                            playerDino.movement[1] = -1 * playerDino.jumpSpeed
-                    elif np.array_equal(move, [0, 0, 1]):
-                        # print("S'ACCROUPIR")
-                        if not (playerDino.isJumping and playerDino.isDead):
-                            playerDino.isDucking = True
+                        # TODO DONE on effectue l'action
+                        if np.array_equal(move, [1, 0, 0]):
+                            # print("TOUT DROIT")
+                            playerDino.isDucking = False
+                            # On avance tt droit, si le dino est accroupi il se relève
+                        elif np.array_equal(move, [0, 1, 0]):
+                            # print("SAUTE")
+                            if playerDino.rect.bottom == int(0.98 * height):
+                                playerDino.isJumping = True
+                                # if pygame.mixer.get_init() is not None:
+                                # jump_sound.play()
+                                playerDino.movement[1] = -1 * playerDino.jumpSpeed
+                        elif np.array_equal(move, [0, 0, 1]):
+                            # print("S'ACCROUPIR")
+                            if not (playerDino.isJumping and playerDino.isDead):
+                                playerDino.isDucking = True
 
                     # Mouvement des ennemis et détection des collisions
                     for c in cacti:
@@ -470,16 +473,21 @@ def lancer_IA():
                             # if pygame.mixer.get_init() is not None:
                             #   die_sound.play()
 
-                    # TODO DONE Calcul du reward et du nouveau state
-                    state_new = agent.get_state(playerDino, cacti, pteras)
-                    reward = agent.set_reward(playerDino, cacti, pteras)
+                    if canAIAct == 0:
+                        # TODO DONE Calcul du reward et du nouveau state
+                        state_new = agent.get_state(playerDino, cacti, pteras)
+                        reward = agent.set_reward(playerDino, cacti, pteras)
 
-                    # TODO DONE Enregistrement dans la mémoire
-                    if params['train']:
-                        # On stocke cette action dans la mémoire à court terme
-                        agent.train_short_memory(state_old, move, reward, state_new, playerDino.isDead)
-                        # On stocke cette action dans la mémoire à long terme
-                        agent.remember(state_old, move, reward, state_new, playerDino.isDead)
+                        # TODO DONE Enregistrement dans la mémoire
+                        if params['train']:
+                            # On stocke cette action dans la mémoire à court terme
+                            agent.train_short_memory(state_old, move, reward, state_new, playerDino.isDead)
+                            # On stocke cette action dans la mémoire à long terme
+                            agent.remember(state_old, move, reward, state_new, playerDino.isDead)
+                    else:
+                        canAIAct += 1 # Variable expérimentale permettant de ne pas faire agir l'IA trop rapidement
+                        if canAIAct >= 3:
+                            canAIAct = 0
 
                     # Génération de nouveaux ennemis
                     if len(cacti) < 2:
@@ -510,7 +518,7 @@ def lancer_IA():
                     scb.update(playerDino.score)
                     highsc.update(high_score)
 
-                    if pygame.display.get_surface() is not None:
+                    if pygame.display.get_surface() is not None and True:
                         screen.fill(background_col)
                         new_ground.draw()
                         clouds.draw(screen)
@@ -553,7 +561,7 @@ def lancer_IA():
                         agent.replay_new(agent.memory, params['batch_size'])
 
                 highsc.update(high_score)
-                if pygame.display.get_surface() is not None:
+                if pygame.display.get_surface() is not None and True:
                     disp_gameOver_msg(retbutton_image, gameover_image)
                     if high_score != 0:
                         highsc.draw()
